@@ -20,8 +20,12 @@
  *    console.log(r.height);      // => 20
  *    console.log(r.getArea());   // => 200
  */
-function Rectangle(/* width, height */) {
-  throw new Error('Not implemented');
+function Rectangle(width, height) {
+  return {
+    width,
+    height,
+    getArea: () => width * height,
+  };
 }
 
 
@@ -35,8 +39,8 @@ function Rectangle(/* width, height */) {
  *    [1,2,3]   =>  '[1,2,3]'
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
-function getJSON(/* obj */) {
-  throw new Error('Not implemented');
+function getJSON(obj) {
+  return JSON.stringify(obj);
 }
 
 
@@ -51,8 +55,8 @@ function getJSON(/* obj */) {
  *    const r = fromJSON(Circle.prototype, '{"radius":10}');
  *
  */
-function fromJSON(/* proto, json */) {
-  throw new Error('Not implemented');
+function fromJSON(proto, json) {
+  return new proto.constructor(...Object.values(JSON.parse(json)));
 }
 
 
@@ -111,32 +115,109 @@ function fromJSON(/* proto, json */) {
  */
 
 const cssSelectorBuilder = {
-  element(/* value */) {
-    throw new Error('Not implemented');
+  elements: {
+    id: 0,
+    psEl: 0,
+  },
+  elementOrder: ['element', 'id ', 'class', 'attribute', 'pseudo-class', 'pseudo-element'],
+  currentElementOrder: [],
+  combineResult: [],
+  result: [],
+  element(value) {
+    if (this.result.length > 0) {
+      if (this.result.length < 2) { this.sendError(); }
+      this.combineResult.push(this.result.join(''));
+      this.result = [];
+      this.elements = {};
+      this.currentElementOrder = [];
+    }
+
+    this.checkOrder(this.elementOrder[0]);
+
+    this.result.push(value);
+    return this;
   },
 
-  id(/* value */) {
-    throw new Error('Not implemented');
+  id(value) {
+    if (this.elements.id) {
+      this.sendError();
+    }
+    this.elements.id = 1;
+
+    this.checkOrder(this.elementOrder[1]);
+
+
+    this.result.push(`#${value}`);
+    return this;
   },
 
-  class(/* value */) {
-    throw new Error('Not implemented');
+  class(value) {
+    this.checkOrder(this.elementOrder[2]);
+
+    this.result.push(`.${value}`);
+    return this;
   },
 
-  attr(/* value */) {
-    throw new Error('Not implemented');
+  attr(value) {
+    this.checkOrder(this.elementOrder[3]);
+
+    this.result.push(`[${value}]`);
+    return this;
   },
 
-  pseudoClass(/* value */) {
-    throw new Error('Not implemented');
+  pseudoClass(value) {
+    this.checkOrder(this.elementOrder[4]);
+
+    this.result.push(`:${value}`);
+    return this;
   },
 
-  pseudoElement(/* value */) {
-    throw new Error('Not implemented');
+  pseudoElement(value) {
+    if (this.elements.psEl) {
+      this.sendError();
+    }
+    this.elements.psEl = 1;
+
+    this.checkOrder(this.elementOrder[5]);
+
+    this.result.push(`::${value}`);
+    return this;
   },
 
-  combine(/* selector1, combinator, selector2 */) {
-    throw new Error('Not implemented');
+  combine(selector1, combinator, selector2) {
+    const first = selector2.combineResult.pop();
+    const second = [...selector1.result].join('');
+    this.result = [];
+    this.result.push(`${first} ${combinator} ${second}`);
+    return this;
+  },
+
+  sendError() {
+    this.clean();
+    throw Error('Element, id and pseudo-element should not occur more then one time inside the selector');
+  },
+
+  clean() {
+    this.combineResult = [];
+    this.result = [];
+    this.elements = {};
+    this.currentElementOrder = [];
+  },
+
+  checkOrder(element) {
+    const position = this.elementOrder.indexOf(element);
+    if (this.currentElementOrder[this.currentElementOrder.length - 1] > position) {
+      this.clean();
+      throw Error('Selector parts should be arranged in the following order: element, id, class, attribute, pseudo-class, pseudo-element');
+    } else {
+      this.currentElementOrder.push(position);
+    }
+  },
+
+  stringify() {
+    const resultEnd = this.result.join('');
+    this.clean();
+    return resultEnd;
   },
 };
 
